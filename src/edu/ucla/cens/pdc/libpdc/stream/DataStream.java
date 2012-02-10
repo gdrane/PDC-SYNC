@@ -368,6 +368,16 @@ public class DataStream implements iDataStream, iState {
 	{
 		return getObjectState().toByteArray();
 	}
+	
+	public void syncTreeCreated()
+	{
+		_syncTreeCreated = true;
+	}
+	
+	public boolean isSyncTreeCreated()
+	{
+		return _syncTreeCreated;
+	}
 // </editor-fold>
 
 	/**
@@ -400,4 +410,10 @@ public class DataStream implements iDataStream, iState {
 	 * receivers of our DS
 	 */
 	protected List<PDCReceiver> _receivers = new ArrayList<PDCReceiver>();
+	
+	/**
+	 * Says whether the slice has been created or not to disallow duplicate synctrees
+	 */
+	private boolean _syncTreeCreated = false;
+	 
 }

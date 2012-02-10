@@ -29,6 +29,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.content.ConfigSlice;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -123,6 +124,18 @@ public class StreamControlCommands extends StreamCommand {
 			
 			Log.info("### STREAM INFO REGISTERED ON THE RECEIVER SIDE ###");
 			
+			Log.info("### CREATING THE SLICE FOR SYNCHRONIZATION PURPOSES ###");
+			
+			if(!ds.isSyncTreeCreated()) {
+				ContentName topology = ContentName.fromURI("/ndn/ucla.edu/synctopology").
+						append(ds.app.getAppName());
+				ContentName prefix = ContentName.fromURI("/ndn/ucla.edu/repo").
+						append(ds.app.getAppName()).append(ds.data_stream_id).append("data");
+				ConfigSlice.checkAndCreate(topology, prefix, null, config.getCCNHandle());
+				ds.syncTreeCreated();
+			}
+			Log.info("### CREATED THE SLICE FOR SYNCHRONIZATION");
+			
 			return true;
 		}
 		catch (GeneralSecurityException ex) {
@@ -197,6 +210,7 @@ public class StreamControlCommands extends StreamCommand {
 		PDCReceiver receiver;
 		StreamInfo si;
 		byte[] encrypted;
+		boolean retval;
 
 		receiver = ds.name2receiver(receiver_uri);
 		if (receiver == null) {
@@ -218,7 +232,7 @@ public class StreamControlCommands extends StreamCommand {
 		assert encrypted != null;
 
 		try {
-			return CommunicationHelper.publishEncryptedData(config.getCCNHandle(),
+			 retval = CommunicationHelper.publishEncryptedData(config.getCCNHandle(),
 					interest, ds.getTransport().getEncryptor().getStreamKeyDigest(),
 					encrypted, 1);
 		}
@@ -226,6 +240,33 @@ public class StreamControlCommands extends StreamCommand {
 			Log.error("Unable to transmit data: " + ex.getMessage());
 			return false;
 		}
+		
+		// Sending stream info is the last step in the stream setup process on the publisher
+		// this means that it's safe to create a slice for synchronizing data
+		try {
+			if(!ds.isSyncTreeCreated()) {
+				Log.info("### CREATING SYNC TREE AFTER SENDING THE STREAM INFO");
+				ContentName topology;
+				topology = ContentName.fromURI("/ndn/ucla.edu/synctopology").
+						append(ds.app.getAppName());
+				ContentName prefix = ContentName.fromURI("/ndn/ucla.edu/repo").
+						append(ds.app.getAppName()).append(ds.data_stream_id).append("data");
+				ConfigSlice.checkAndCreate(topology, prefix, null, config.getCCNHandle());
+				ds.syncTreeCreated();
+				Log.info("### SYNC TREE CREATED ###");
+			}	
+			} catch (MalformedContentNameStringException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			} catch (ContentDecodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		
+		return retval;
 	}
 
 	boolean processKey(DataStream ds, ContentName receiver_uri, Interest interest)

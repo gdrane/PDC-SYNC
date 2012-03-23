@@ -10,6 +10,7 @@ import edu.ucla.cens.pdc.libpdc.iApplication;
 import edu.ucla.cens.pdc.libpdc.iConfigStorage;
 import edu.ucla.cens.pdc.libpdc.iState;
 import edu.ucla.cens.pdc.libpdc.stream.Storage;
+import edu.ucla.cens.pdc.libpdc.stream.StreamRepoStore;
 import edu.ucla.cens.pdc.libpdc.util.StringUtil;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -124,18 +125,25 @@ public class GlobalConfig implements iState {
 		Storage store;
 
 		assert app != null;
-		assert _data_storage_class != null;
-
-		try {
-			constructor = _data_storage_class.getConstructor(app.getClass(),
-					String.class);
-			store = constructor.newInstance(app, data_stream_id);
+		// assert _data_storage_class != null; -- Data Storage Class can be null 
+		if(_data_storage_class != null) {
+			try {
+			
+				constructor = _data_storage_class.getConstructor(app.getClass(),
+						String.class);
+				store = constructor.newInstance(app, data_stream_id);
+			
+				_stream_repo_store = new StreamRepoStore(app, data_stream_id, store);
+			}
+			catch (Exception ex) {
+				throw new Error("Unable instantiate the storage class", ex);
+			}
+		} else {
+			// Create a StreamRepoStore with user supplied storage as null
+			_stream_repo_store = new StreamRepoStore(app, data_stream_id, null);
 		}
-		catch (Exception ex) {
-			throw new Error("Unable instantiate the storage class", ex);
-		}
 
-		return store;
+		return _stream_repo_store;
 	}
 
 	/**
@@ -407,4 +415,6 @@ public class GlobalConfig implements iState {
 	private transient PDCKeyManager _key_manager = null;
 
 	private transient CCNHandle _ccn_handle = null;
+	
+	private transient static StreamRepoStore _stream_repo_store = null;
 }

@@ -465,7 +465,7 @@ public class StreamTransport {
 
 			if (response == null)
 				return null;
-
+			/*
 			// Checking authenticity
 			final ContentVerifier verifier = _ccn_handle.keyManager().
 					getDefaultVerifier();
@@ -473,7 +473,7 @@ public class StreamTransport {
 				Log.warning("Got a packet which I can't verify credentials.");
 				return null;
 			}
-
+			*/
 			try {
 				record = _encryptor.decryptRecord(response.content());
 			}
